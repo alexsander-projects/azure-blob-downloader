@@ -52,10 +52,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::new();
 
     let list_response = rt.block_on(client.get(&list_url).send())?;
+    if !list_response.status().is_success() {
+        eprintln!("Failed to list blobs: {}", list_response.status());
+        let error_body = rt.block_on(list_response.text())?;
+        eprintln!("Response body: {}", error_body);
+        return Err("Failed to list blobs.".into());
+    }
     let list_body = rt.block_on(list_response.text())?;
     let list_blobs_response: ListBlobsResponse = from_str(&list_body)?;
+    println!("Found {} blobs.", list_blobs_response.blobs.blob.len());
+
+
+    let file_name = if args.len() > 4 {Some(&args[4])} else {None};
 
     for blob in list_blobs_response.blobs.blob {
+        println!("Blob: {}", blob.name);
+        if let Some(file_name) = file_name {
+            if blob.name != *file_name {
+                println!("Skipping {}", blob.name);
+                continue;
+            }
+        }
+
         let blob_name = &blob.name;
         let url = format!(
             "https://{}.blob.core.windows.net/{}/{}?{}",
@@ -63,6 +81,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
 
         let response = rt.block_on(client.get(&url).send())?;
+        if !response.status().is_success() {
+            eprintln!("Failed to download blob: {}", response.status());
+            let error_body = rt.block_on(response.text())?;
+            eprintln!("Response body: {}", error_body);
+            return Err("Failed to download blob.".into());
+        }
 
         // Create directories if they don't exist
         let path = download_directory.join(blob_name);
@@ -83,6 +107,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })?;
 
         println!("Downloaded {}", path.display());
+
+        if file_name.is_some() {
+            break;
+        }
     }
 
     Ok(())
