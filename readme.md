@@ -18,3 +18,10 @@ cargo run mycontainer mydirectory /home/user/downloads
 
 This will download the blob from the container `mycontainer` and the directory `mydirectory` to the directory `/home/user/downloads`.
 
+It works by making a GET request to the Azure REST API to get the list of blobs in the specified container and directory.
+It then downloads the blobs one by one to the specified destination path.
+
+## Note
+
+- It uses the `reqwest` crate to make HTTP requests to the Azure REST API.
+- The documentation for the Azure REST API can be found [here](https://docs.microsoft.com/en-us/rest/api/storageservices/).
