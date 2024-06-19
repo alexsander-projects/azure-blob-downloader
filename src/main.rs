@@ -27,11 +27,21 @@ struct ListBlobsResponse {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 4 {
+        return Err("Usage: azure_blob_download <container_name> <directory_name> <download_directory>".into());
+    }
     let account_name = env::var("AZURE_STORAGE_ACCOUNT").expect("Set AZURE_STORAGE_ACCOUNT env variable");
     let sas_token = env::var("AZURE_SAS_TOKEN").expect("Set AZURE_SAS_TOKEN env variable");
 
-    let container_name = "test";
-    let directory_name = ""; // specify the directory you want to download
+    let container_name = &args[1];
+    let directory_name = &args[2];
+    let download_directory = Path::new(&args[3]);
+
+
+    if !download_directory.is_absolute() {
+        return Err("The download directory must be an absolute path.".into());
+    }
 
     let list_url = format!(
         "https://{}.blob.core.windows.net/{}/?restype=container&comp=list&prefix={}&{}",
@@ -44,10 +54,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let list_response = rt.block_on(client.get(&list_url).send())?;
     let list_body = rt.block_on(list_response.text())?;
     let list_blobs_response: ListBlobsResponse = from_str(&list_body)?;
-    let download_directory = Path::new("E:/alexs/Downloads/test/");
-    if !download_directory.is_absolute() {
-        return Err("The download directory must be an absolute path.".into());
-    }
 
     for blob in list_blobs_response.blobs.blob {
         let blob_name = &blob.name;
